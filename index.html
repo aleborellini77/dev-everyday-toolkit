@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>First-Response Toolkit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #161B22;
+    --panel: #1E2530;
+    --panel-hover: #232B38;
+    --border: #2D3646;
+    --border-light: #3A4356;
+    --text: #E4E7EC;
+    --text-dim: #8891A0;
+    --text-faint: #5C6577;
+    --amber: #F0A860;
+    --amber-dim: #7A5A38;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* CRT texture: one quiet, restrained effect — not repeated per element */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.09) 0px,
+      rgba(0, 0, 0, 0.09) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    opacity: 0.35;
+  }
+
+  @keyframes blink {
+    0%, 45% { opacity: 1; }
+    50%, 95% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 7px;
+    height: 14px;
+    background: var(--amber);
+    margin-left: 2px;
+    vertical-align: -2px;
+    animation: blink 1.1s step-end infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cursor { animation: none; opacity: 1; }
+    body::before { display: none; }
+  }
+
+  /* Terminal window chrome */
+  .termbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .termbar .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .termbar .dot.red { background: #E0605A; }
+  .termbar .dot.yellow { background: #E0B04A; }
+  .termbar .dot.green { background: #5FB878; }
+
+  .termbar .path {
+    margin-left: 12px;
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+
+  /* Layout */
+  .frame {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 860px) {
+    .frame { grid-template-columns: 1fr; }
+    .sidebar { position: static !important; height: auto !important; border-right: none !important; border-bottom: 1px solid var(--border); }
+    .nav-list { display: none; }
+  }
+
+  /* Sidebar */
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 32px 20px;
+    border-right: 1px solid var(--border);
+  }
+
+  .brand {
+    margin-bottom: 28px;
+  }
+
+  .brand .index {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  .brand .index .user { color: var(--amber); }
+  .brand .index .path { color: var(--text-dim); }
+
+  .brand h1 {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .brand h1::before {
+    content: "$ ";
+    color: var(--amber);
+    font-weight: 400;
+  }
+
+  .brand p {
+    color: var(--text-dim);
+    font-size: 12.5px;
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+
+  .brand p::before {
+    content: "# ";
+    color: var(--text-faint);
+  }
+
+  .search-box {
+    position: relative;
+    margin-bottom: 24px;
+  }
+
+  .search-box input {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 12px 9px 26px;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .search-box input:focus {
+    border-color: var(--amber-dim);
+  }
+
+  .search-box input::placeholder {
+    color: var(--text-faint);
+  }
+
+  .search-box::before {
+    content: "$";
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--amber);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+  }
+
+  .nav-list { list-style: none; }
+
+  .nav-list li a {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    padding: 6px 8px;
+    margin: 0 -8px;
+    border-radius: 3px;
+    text-decoration: none;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    border-left: 2px solid transparent;
+    transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+  }
+
+  .nav-list li a .n {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    flex-shrink: 0;
+  }
+
+  .nav-list li a:hover {
+    color: var(--text);
+    background: var(--panel);
+  }
+
+  .nav-list li a.active {
+    color: var(--amber);
+    border-left-color: var(--amber);
+    background: var(--panel);
+  }
+
+  .nav-list li a.active .n {
+    color: var(--amber);
+  }
+
+  .nav-count {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-faint);
+  }
+
+  /* Main */
+  main {
+    padding: 40px 36px 100px;
+  }
+
+  .lead {
+    max-width: 640px;
+    margin-bottom: 40px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .lead h2 {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .no-results {
+    display: none;
+    color: var(--text-dim);
+    font-size: 14px;
+    padding: 40px 0;
+  }
+
+  .no-results.show { display: block; }
+
+  section.category {
+    margin-bottom: 44px;
+    scroll-margin-top: 24px;
+  }
+
+  .cat-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .cat-head .idx {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+
+  .cat-head h3 {
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .cat-head h3::before {
+    content: "$ cd ";
+    color: var(--amber);
+    font-weight: 400;
+  }
+
+  .cat-title-label {
+    color: var(--text-dim);
+    font-weight: 400;
+    font-size: 13px;
+  }
+
+  .cat-title-label::before { content: "  # "; color: var(--text-faint); }
+
+  .cat-head .when {
+    color: var(--text-faint);
+    font-size: 12px;
+    margin-left: auto;
+    text-align: right;
+    max-width: 280px;
+  }
+
+  .cat-head .when::before {
+    content: "# ";
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  @media (max-width: 640px) {
+    .card-grid { grid-template-columns: 1fr; }
+    .cat-head { flex-wrap: wrap; }
+    .cat-head .when { text-align: left; max-width: none; }
+  }
+
+  .tool-card {
+    display: block;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px 16px;
+    text-decoration: none;
+    color: var(--text);
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+
+  .tool-card:hover {
+    background: var(--panel-hover);
+    border-color: var(--border-light);
+  }
+
+  .tool-card .row1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+
+  .tool-card .name {
+    font-weight: 600;
+    font-size: 13.5px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .tool-card .name::before {
+    content: "> ";
+    color: var(--text-faint);
+  }
+
+  .tool-card .url {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--amber);
+    text-align: right;
+    flex-shrink: 0;
+    max-width: 55%;
+  }
+
+  .tool-card .desc {
+    color: var(--text-dim);
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+
+  .tool-card.hidden { display: none; }
+  section.category.hidden { display: none; }
+
+  footer {
+    max-width: 640px;
+    color: var(--text-faint);
+    font-size: 11.5px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  footer::before { content: "# "; }
+
+  /* Password gate */
+  #gate {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  #gate.unlocked { display: none; }
+
+  .gate-box {
+    width: 100%;
+    max-width: 380px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--panel);
+    padding: 24px;
+  }
+
+  .gate-box .gline {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .gate-box .gline .amber { color: var(--amber); }
+
+  .gate-row {
+    display: flex;
+    align-items: center;
+    margin-top: 14px;
+    gap: 6px;
+  }
+
+  .gate-row span {
+    color: var(--amber);
+    font-size: 13px;
+  }
+
+  .gate-row input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    caret-color: var(--amber);
+  }
+
+  .gate-error {
+    color: #E0757A;
+    font-size: 12px;
+    margin-top: 10px;
+    min-height: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <p class="gline">toolkit login — <span class="amber">restricted</span></p>
+    <p class="gline">authentication required to continue</p>
+    <form id="gateForm">
+      <div class="gate-row">
+        <span>$</span>
+        <input type="password" id="gatePw" placeholder="password" autocomplete="off" autofocus>
+      </div>
+    </form>
+    <p class="gate-error" id="gateError"></p>
+  </div>
+</div>
+
+<div id="app" style="visibility:hidden;">
+
+<div class="termbar">
+  <span class="dot red"></span>
+  <span class="dot yellow"></span>
+  <span class="dot green"></span>
+  <span class="path">zsh — ~/toolkit — 92×24</span>
+</div>
+
+<div class="frame">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="index"><span class="user">dev</span><span class="path">@macbook-pro-m1 ~ %</span></span>
+      <h1>Dev / IT Toolkit<span class="cursor"></span></h1>
+      <p>jump to the category matching the symptom, then the tool that isolates the cause</p>
+    </div>
+
+    <div class="search-box">
+      <input type="text" id="search" placeholder="grep tools..." autocomplete="off">
+    </div>
+
+    <ul class="nav-list" id="navList"></ul>
+  </aside>
+
+  <main>
+    <div class="lead">
+      <h2>14 categories, organized by the shape of the problem someone hands you.</h2>
+    </div>
+
+    <div id="categories"></div>
+
+    <p class="no-results" id="noResults">$ grep: no matches found</p>
+
+    <footer>
+      Built as a personal reference — verify a tool still fits before relying on it under pressure. Links open in a new tab.
+    </footer>
+  </main>
+</div>
+</div>
+
+<script>
+// Lightweight client-side gate. This deters casual visitors — it is NOT
+// real security, since the check runs entirely in the browser and the
+// password hash below is visible to anyone who views source. For actual
+// access control, front this site with Cloudflare Access (or similar)
+// instead.
+//
+// To change the password: open a browser console anywhere and run
+//   crypto.subtle.digest('SHA-256', new TextEncoder().encode('yourpassword'))
+//     .then(b => console.log(Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join('')))
+// then paste the printed hash below. Default password is: toolkit
+
+const GATE_HASH = "a071a2473c944518ad502cfb6a561f2f92da70d228dc1934a53357bdb386a0cc";
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+const gate = document.getElementById('gate');
+const app = document.getElementById('app');
+const gateForm = document.getElementById('gateForm');
+const gatePw = document.getElementById('gatePw');
+const gateError = document.getElementById('gateError');
+
+gateForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const hash = await sha256(gatePw.value);
+  if (hash === GATE_HASH) {
+    gate.classList.add('unlocked');
+    app.style.visibility = 'visible';
+  } else {
+    gateError.textContent = '-bash: permission denied';
+    gatePw.value = '';
+    gatePw.focus();
+  }
+});
+</script>
+
+<script>
+const DATA = [
+  {
+    id: "dns",
+    title: "DNS & Domain",
+    when: "domain not resolving, wrong records",
+    tools: [
+      { name: "MXToolbox", url: "https://mxtoolbox.com", desc: "Run DNS, MX, and blacklist checks from one box." },
+      { name: "DNS Checker", url: "https://dnschecker.org", desc: "See DNS propagation across servers worldwide." },
+      { name: "WHOIS Lookup", url: "https://whois.domaintools.com", desc: "Check domain registration, expiry, and ownership." },
+      { name: "Google Public DNS", url: "https://dns.google", desc: "Query records directly, no local caching guesswork." },
+      { name: "DNSdumpster", url: "https://dnsdumpster.com", desc: "Map every subdomain and host tied to a domain at once." },
+      { name: "Google Admin Toolbox Dig", url: "https://toolbox.googleapps.com/apps/dig/", desc: "Run dig-style raw record queries from the browser." }
+    ]
+  },
+  {
+    id: "hosting",
+    title: "Server & Hosting",
+    when: "site down, slow to connect, outage",
+    tools: [
+      { name: "Down For Everyone Or Just Me", url: "https://downforeveryoneorjustme.com", desc: "Rule out \"is it just me\" in five seconds." },
+      { name: "Ping.eu", url: "https://ping.eu", desc: "Ping and traceroute from multiple global locations." },
+      { name: "IsItDownRightNow", url: "https://www.isitdownrightnow.com", desc: "Cross-check outage reports for a specific site." },
+      { name: "UptimeRobot Status", url: "https://uptimerobot.com", desc: "Check the public status page a client already trusts." },
+      { name: "Site24x7 Tools", url: "https://www.site24x7.com/tools/", desc: "Free suite: ping, traceroute, port check, in one place." },
+      { name: "IPinfo", url: "https://ipinfo.io", desc: "Look up the ASN and hosting provider behind an IP." }
+    ]
+  },
+  {
+    id: "ssl",
+    title: "SSL / TLS / Security",
+    when: "cert warnings, mixed content, headers",
+    tools: [
+      { name: "SSL Labs", url: "https://www.ssllabs.com/ssltest/", desc: "Grade a certificate chain and catch config warnings." },
+      { name: "Security Headers", url: "https://securityheaders.com", desc: "Scan response headers for missing security policies." },
+      { name: "Mozilla Observatory", url: "https://observatory.mozilla.org", desc: "Get a broader security posture score with fixes." }
+    ]
+  },
+  {
+    id: "perf",
+    title: "Performance",
+    when: "\"the site feels slow\"",
+    tools: [
+      { name: "PageSpeed Insights", url: "https://pagespeed.web.dev", desc: "Get Core Web Vitals straight from Google's field data." },
+      { name: "GTmetrix", url: "https://gtmetrix.com", desc: "Waterfall a page load and spot the heaviest asset." },
+      { name: "WebPageTest", url: "https://www.webpagetest.org", desc: "Test from real devices under real network conditions." }
+    ]
+  },
+  {
+    id: "email",
+    title: "Email & SMTP",
+    when: "mail not sending, landing in spam",
+    tools: [
+      { name: "Mail-Tester", url: "https://www.mail-tester.com", desc: "Score deliverability and spot SPF/DKIM/DMARC gaps." },
+      { name: "MXToolbox SuperTool", url: "https://mxtoolbox.com/SuperTool.aspx", desc: "Check MX records and mail server blacklisting." },
+      { name: "Google Postmaster Tools", url: "https://postmaster.google.com", desc: "See how Gmail scores your sending domain's reputation." }
+    ]
+  },
+  {
+    id: "seo",
+    title: "SEO",
+    when: "not indexing, rich results missing",
+    tools: [
+      { name: "Search Console", url: "https://search.google.com/search-console", desc: "Check indexing status and search performance directly." },
+      { name: "Rich Results Test", url: "https://search.google.com/test/rich-results", desc: "Validate structured data before it ships." },
+      { name: "Schema Markup Validator", url: "https://validator.schema.org", desc: "Double-check schema.org markup syntax." }
+    ]
+  },
+  {
+    id: "frontend",
+    title: "Frontend & Browser",
+    when: "renders wrong, only on one browser",
+    tools: [
+      { name: "Can I Use", url: "https://caniuse.com", desc: "Check browser support before relying on an API." },
+      { name: "Wappalyzer", url: "https://www.wappalyzer.com", desc: "Identify what stack a live site is actually running." },
+      { name: "BrowserStack", url: "https://www.browserstack.com", desc: "Reproduce a bug on a browser you don't have installed." }
+    ]
+  },
+  {
+    id: "api",
+    title: "API & Data Tools",
+    when: "malformed request, bad payload, broken regex",
+    tools: [
+      { name: "Postman", url: "https://www.postman.com", desc: "Poke an endpoint without writing a throwaway script." },
+      { name: "httpbin", url: "https://httpbin.org", desc: "Sanity-check exactly what your request sends." },
+      { name: "JSONLint", url: "https://jsonlint.com", desc: "Find the exact character breaking a JSON payload." },
+      { name: "Regex101", url: "https://regex101.com", desc: "Debug a regex with an explanation of every group." }
+    ]
+  },
+  {
+    id: "uptime",
+    title: "Uptime & Status Monitoring",
+    when: "recurring outages, third-party dependency",
+    tools: [
+      { name: "UptimeRobot", url: "https://uptimerobot.com", desc: "Set up free monitors before the next incident." },
+      { name: "DownDetector", url: "https://downdetector.com", desc: "See if a third-party service is having a bad day." }
+    ]
+  },
+  {
+    id: "database",
+    title: "Database",
+    when: "query bugs, schema questions",
+    tools: [
+      { name: "DB Fiddle", url: "https://www.dbfiddle.uk", desc: "Test a query against Postgres/MySQL without touching prod." },
+      { name: "SQL Fiddle", url: "http://sqlfiddle.com", desc: "Share a reproducible schema-plus-query snippet." }
+    ]
+  },
+  {
+    id: "code",
+    title: "Code Quality & Packages",
+    when: "broken install, bad markup, heavy bundle",
+    tools: [
+      { name: "W3C Validator", url: "https://validator.w3.org", desc: "Check markup for syntax errors that break rendering." },
+      { name: "Bundlephobia", url: "https://bundlephobia.com", desc: "See what a package actually costs before installing." },
+      { name: "npm Status", url: "https://status.npmjs.org", desc: "Check if a broken install is npm's fault or yours." }
+    ]
+  },
+  {
+    id: "network",
+    title: "General IT & Network",
+    when: "connectivity, \"what's my IP\", client access",
+    tools: [
+      { name: "Speedtest", url: "https://www.speedtest.net", desc: "Rule out bandwidth before debugging anything else." },
+      { name: "What's My IP", url: "https://whatismyipaddress.com", desc: "Confirm the IP a client or server is actually using." },
+      { name: "IPLocation", url: "https://iplocation.net", desc: "Geolocate an IP when \"where's this request from\" matters." }
+    ]
+  },
+  {
+    id: "shopify",
+    title: "Shopify",
+    when: "theme bugs, storefront errors, slow checkout",
+    tools: [
+      { name: "Shopify Status", url: "https://www.shopifystatus.com", desc: "Check whether an outage is Shopify's fault before touching the store." },
+      { name: "Shopify Community", url: "https://community.shopify.com", desc: "Search merchant and dev threads for the exact error you're seeing." },
+      { name: "Theme Check", url: "https://shopify.dev/docs/storefronts/themes/tools/theme-check", desc: "Lint Liquid and JSON for errors before they hit production." },
+      { name: "Shopify Theme Inspector", url: "https://github.com/Shopify/shopify-theme-inspector", desc: "Profile Liquid rendering in Chrome to find what's slowing a theme." },
+      { name: "Shopify CLI", url: "https://shopify.dev/docs/api/shopify-cli", desc: "Scaffold, preview, and push theme or app changes from the terminal." },
+      { name: "Shopify Dev Docs", url: "https://shopify.dev", desc: "Look up any Liquid object, Admin API endpoint, or webhook payload." },
+      { name: "Partner Dashboard", url: "https://partners.shopify.com", desc: "Manage dev stores, API credentials, and app/theme logs." }
+    ]
+  },
+  {
+    id: "terminal",
+    title: "Terminal (macOS / Unix)",
+    when: "faster than opening a browser tab",
+    tools: [
+      { name: "dig", cmd: "dig A example.com", url: "https://ss64.com/mac/dig.html", desc: "Query any DNS record type straight from the resolver." },
+      { name: "curl", cmd: "curl -I url", url: "https://curl.se/docs/manpage.html", desc: "Check headers, redirects, and status codes without a browser." },
+      { name: "traceroute", cmd: "traceroute host", url: "https://ss64.com/mac/traceroute.html", desc: "See exactly which hop a connection dies on." },
+      { name: "nmap", cmd: "nmap -p 1-1000 host", url: "https://nmap.org/book/man.html", desc: "Scan open ports before assuming it's a firewall issue. brew install nmap" },
+      { name: "lsof", cmd: "lsof -i :3000", url: "https://ss64.com/mac/lsof.html", desc: "Find the process locking a port before killing it blindly." },
+      { name: "openssl", cmd: "openssl s_client -connect host:443", url: "https://ss64.com/mac/openssl.html", desc: "Inspect a TLS handshake and certificate chain by hand." },
+      { name: "mtr", cmd: "mtr host", url: "https://github.com/traviscross/mtr", desc: "Combine ping and traceroute into one live view. brew install mtr" },
+      { name: "htop", cmd: "htop", url: "https://htop.dev", desc: "Watch CPU, memory, and runaway processes in real time. brew install htop" },
+      { name: "httpie", cmd: "http GET url", url: "https://httpie.io/docs/cli", desc: "Send readable, colorized API requests without curl's flags. brew install httpie" }
+    ]
+  }
+];
+
+const navList = document.getElementById('navList');
+const catContainer = document.getElementById('categories');
+const noResults = document.getElementById('noResults');
+
+DATA.forEach((cat, i) => {
+  const idx = String(i + 1).padStart(2, '0');
+
+  // nav
+  const li = document.createElement('li');
+  li.innerHTML = `<a href="#${cat.id}" data-id="${cat.id}"><span class="n">${idx}</span><span>${cat.title}</span><span class="nav-count">${cat.tools.length}</span></a>`;
+  navList.appendChild(li);
+
+  // section
+  const section = document.createElement('section');
+  section.className = 'category';
+  section.id = cat.id;
+  section.dataset.title = cat.title.toLowerCase();
+
+  const cardsHtml = cat.tools.map(t => {
+    const host = t.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const badge = t.cmd ? t.cmd : host;
+    return `<a class="tool-card" href="${t.url}" target="_blank" rel="noopener" data-search="${(t.name + ' ' + t.desc + ' ' + host + ' ' + (t.cmd || '')).toLowerCase()}">
+      <div class="row1">
+        <span class="name">${t.name}</span>
+        <span class="url mono">${badge}</span>
+      </div>
+      <div class="desc">${t.desc}</div>
+    </a>`;
+  }).join('');
+
+  section.innerHTML = `
+    <div class="cat-head">
+      <span class="idx mono">${idx}</span>
+      <h3>${cat.id}/ <span class="cat-title-label">${cat.title}</span></h3>
+      <span class="when">${cat.when}</span>
+    </div>
+    <div class="card-grid">${cardsHtml}</div>
+  `;
+  catContainer.appendChild(section);
+});
+
+// search filter
+const searchInput = document.getElementById('search');
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  let anyVisible = false;
+
+  document.querySelectorAll('section.category').forEach(section => {
+    const cards = section.querySelectorAll('.tool-card');
+    let sectionHasMatch = section.dataset.title.includes(q);
+    cards.forEach(card => {
+      const match = q === '' || card.dataset.search.includes(q) || section.dataset.title.includes(q);
+      card.classList.toggle('hidden', !match);
+      if (match) sectionHasMatch = true;
+    });
+    section.classList.toggle('hidden', !sectionHasMatch);
+    if (sectionHasMatch) anyVisible = true;
+  });
+
+  noResults.classList.toggle('show', !anyVisible);
+});
+
+// active nav highlight on scroll
+const navLinks = Array.from(document.querySelectorAll('.nav-list a'));
+const sections = Array.from(document.querySelectorAll('section.category'));
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    const link = navLinks.find(a => a.dataset.id === entry.target.id);
+    if (!link) return;
+    if (entry.isIntersecting) {
+      navLinks.forEach(a => a.classList.remove('active'));
+      link.classList.add('active');
+    }
+  });
+}, { rootMargin: '-10% 0px -75% 0px', threshold: 0 });
+
+sections.forEach(s => observer.observe(s));
+if (navLinks[0]) navLinks[0].classList.add('active');
+</script>
+
+</body>
+</html>
