@@ -531,7 +531,7 @@
 //     .then(b => console.log(Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join('')))
 // then paste the printed hash below. Default password is: toolkit
 
-const GATE_HASH = "a071a2473c944518ad502cfb6a561f2f92da70d228dc1934a53357bdb386a0cc";
+const GATE_HASH = "d35e511c0f30903b3edea1118ddd42b56e7736cf1c7e5193c18182dd365b5df8";
 
 async function sha256(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
