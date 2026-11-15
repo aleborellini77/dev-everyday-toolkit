@@ -1,0 +1,21 @@
+name: Check
+
+# Valida i contenuti nelle pull request: la build fallisce indicando file e riga.
+on:
+  pull_request:
+    paths:
+      - "content/**"
+      - "src/**"
+      - "package*.json"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build

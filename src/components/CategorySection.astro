@@ -1,0 +1,17 @@
+---
+import ToolCard from './ToolCard.astro';
+interface Props { id: string; title: string; when: string; index: number; tools: any[]; editUrl?: string }
+const { id, title, when, index, tools, editUrl } = Astro.props;
+const idx = String(index + 1).padStart(2, '0');
+---
+<section id={id} class="category" data-title={title.toLowerCase()}>
+  <div class="cat-head">
+    <span class="idx mono">{idx}</span>
+    <h3>{id}/ <span class="cat-title-label">{title}</span></h3>
+    {when && <span class="when">{when}</span>}
+    {editUrl && <a class="edit-link" href={editUrl} target="_blank" rel="noopener">edit</a>}
+  </div>
+  <div class="card-grid">
+    {tools.map((t) => <ToolCard {...t} />)}
+  </div>
+</section>

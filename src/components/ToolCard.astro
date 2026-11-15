@@ -1,0 +1,13 @@
+---
+interface Props { name: string; url: string; description: string; cmd?: string }
+const { name, url, description, cmd } = Astro.props;
+const host = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+const search = `${name} ${description} ${host} ${cmd ?? ''}`.toLowerCase();
+---
+<a class="tool-card" href={url} target="_blank" rel="noopener" data-search={search}>
+  <div class="row1">
+    <span class="name">{name}</span>
+    <span class="url mono">{cmd ?? host}</span>
+  </div>
+  <div class="desc">{description}</div>
+</a>

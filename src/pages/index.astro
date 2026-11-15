@@ -1,0 +1,128 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import TerminalBar from '../components/TerminalBar.astro';
+import CategorySection from '../components/CategorySection.astro';
+import Gate from '../components/Gate.astro';
+import { parseTools } from '../lib/parse-tools';
+
+const entries = (await getCollection('categories')).sort(
+  (a, b) => a.data.order - b.data.order || a.id.localeCompare(b.id),
+);
+// Il parsing dei tool fa fallire la build, con file e riga, se un file è scritto male.
+const categories = entries.map((e) => ({
+  id: e.id,
+  title: e.data.title,
+  when: e.data.when,
+  tools: parseTools(e.body ?? '', `content/${e.id}.md`, e.filePath),
+}));
+const editBase = import.meta.env.PUBLIC_EDIT_URL ?? '';
+const gateHash = import.meta.env.PUBLIC_GATE_HASH ?? '';
+const total = categories.reduce((n, c) => n + c.tools.length, 0);
+---
+<Base>
+  {gateHash && <Gate />}
+  <div data-app data-gate-hash={gateHash} hidden={!!gateHash}>
+    <TerminalBar />
+    <div class="frame">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="index"><span class="user">dev</span><span class="path">@macbook-pro-m1 ~ %</span></span>
+          <h1>Dev / IT Toolkit<span class="cursor"></span></h1>
+          <p>jump to the category matching the symptom, then the tool that isolates the cause</p>
+        </div>
+        <div class="search-box">
+          <input id="search" type="text" placeholder="grep tools..." autocomplete="off" aria-label="Filter tools" />
+        </div>
+        <ul class="nav-list">
+          {categories.map((c, i) => (
+            <li>
+              <a href={`#${c.id}`} data-nav={c.id}>
+                <span class="n">{String(i + 1).padStart(2, '0')}</span>
+                <span>{c.title}</span>
+                <span class="nav-count">{c.tools.length}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </aside>
+      <main>
+        <div class="lead">
+          <h2># {categories.length} categories, {total} tools, organized by the shape of the problem someone hands you.</h2>
+        </div>
+        {categories.map((c, i) => (
+          <CategorySection id={c.id} title={c.title} when={c.when} index={i} tools={c.tools} editUrl={editBase ? `${editBase}${c.id}.md` : ''} />
+        ))}
+        <p class="no-results" id="no-results">$ grep: no matches found</p>
+        <footer>
+          Built as a personal reference — verify a tool still fits before relying on it under pressure. Links open in a new tab.
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const app = document.querySelector<HTMLElement>('[data-app]')!;
+    const gate = document.getElementById('gate');
+    const hash = app.dataset.gateHash ?? '';
+
+    // --- password gate (client-side deterrent, not real security) ---
+    async function sha256(text: string) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+      return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    }
+    function unlock() {
+      app.hidden = false;
+      gate?.setAttribute('hidden', '');
+      try { sessionStorage.setItem('toolkit-unlocked', hash); } catch {}
+    }
+    if (hash) {
+      let remembered = false;
+      try { remembered = sessionStorage.getItem('toolkit-unlocked') === hash; } catch {}
+      if (remembered) unlock();
+      else {
+        gate?.removeAttribute('hidden');
+        const pw = document.getElementById('gate-pw') as HTMLInputElement;
+        const err = document.getElementById('gate-error')!;
+        pw.focus();
+        document.getElementById('gate-form')!.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if ((await sha256(pw.value)) === hash) unlock();
+          else { err.textContent = '-bash: permission denied'; pw.value = ''; pw.focus(); }
+        });
+      }
+    }
+
+    // --- search filter ---
+    const input = document.getElementById('search') as HTMLInputElement;
+    const sections = [...document.querySelectorAll<HTMLElement>('section.category')];
+    const empty = document.getElementById('no-results')!;
+    input.addEventListener('input', () => {
+      const q = input.value.trim().toLowerCase();
+      let any = false;
+      for (const s of sections) {
+        const titleHit = (s.dataset.title ?? '').includes(q);
+        let hit = titleHit;
+        s.querySelectorAll<HTMLElement>('.tool-card').forEach((card) => {
+          const match = !q || titleHit || (card.dataset.search ?? '').includes(q);
+          card.classList.toggle('is-hidden', !match);
+          if (match) hit = true;
+        });
+        s.classList.toggle('is-hidden', !hit);
+        any ||= hit;
+      }
+      empty.classList.toggle('show', !any);
+    });
+
+    // --- scroll-spy ---
+    const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-nav]')];
+    const spy = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        links.forEach((a) => a.classList.toggle('active', a.dataset.nav === e.target.id));
+      }
+    }, { rootMargin: '-10% 0px -75% 0px' });
+    sections.forEach((s) => spy.observe(s));
+    links[0]?.classList.add('active');
+  </script>
+</Base>
