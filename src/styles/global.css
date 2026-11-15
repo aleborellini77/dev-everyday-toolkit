@@ -172,3 +172,50 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid 
 .cat-head .edit-link { font-size: 11px; color: var(--text-faint); text-decoration: none; border: 1px solid var(--border); border-radius: 3px; padding: 1px 6px; }
 .cat-head .edit-link:hover { color: var(--amber); border-color: var(--amber-dim); }
 .cat-head h3 + .edit-link { margin-left: auto; } /* senza "when": il link va a destra da solo */
+
+/* Link in sidebar verso i percorsi / indietro */
+.side-link { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 14px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 3px; background: var(--panel); color: var(--amber); text-decoration: none; font-size: 12.5px; }
+.side-link:hover { border-color: var(--amber-dim); background: var(--panel-hover); }
+
+/* Filtro per tag */
+.tag-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: -8px 0 22px; }
+.tag-chip, .tag-reset { font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1; padding: 5px 7px; border-radius: 3px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease; }
+.tag-chip:hover { color: var(--text); border-color: var(--border-light); }
+.tag-chip .tag-count { margin-left: 5px; color: var(--text-faint); }
+.tag-chip.on { color: var(--bg); background: var(--amber); border-color: var(--amber); }
+.tag-chip.on .tag-count { color: var(--bg); }
+.tag-reset { color: var(--text-faint); border-style: dashed; }
+.tag-reset:hover { color: var(--amber); border-color: var(--amber-dim); }
+.tag-reset[hidden] { display: none; }
+
+/* Tag e origine sulla card */
+.card-tags { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 8px; font-size: 10.5px; color: var(--text-faint); }
+.card-tags .from { color: var(--amber-dim); }
+.tool-card .note { margin-top: 6px; padding-left: 8px; border-left: 2px solid var(--amber-dim); color: var(--text); font-size: 12px; line-height: 1.5; }
+
+/* Percorsi di diagnosi */
+.nav-list.always { display: block; }
+.path-list { list-style: none; display: grid; gap: 10px; }
+.path-card { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: baseline; padding: 14px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 3px; color: var(--text); text-decoration: none; transition: background 0.12s ease, border-color 0.12s ease; }
+.path-card:hover { background: var(--panel-hover); border-color: var(--border-light); }
+.path-card .idx { font-size: 12px; color: var(--text-faint); }
+.path-card .path-title { font-weight: 600; font-size: 13.5px; }
+.path-card .path-when { grid-column: 2; }
+.path-when { color: var(--text-faint); font-size: 12px; }
+.path-when::before { content: "# "; }
+.lead .path-when { margin-top: 8px; }
+.lead .path-intro { margin-top: 10px; color: var(--text-dim); font-size: 13px; }
+.lead .edit-link { display: inline-block; margin-top: 12px; font-size: 11px; color: var(--text-faint); text-decoration: none; border: 1px solid var(--border); border-radius: 3px; padding: 1px 6px; }
+.lead .edit-link:hover { color: var(--amber); border-color: var(--amber-dim); }
+
+.steps { list-style: none; counter-reset: none; }
+.step { margin-bottom: 40px; padding-left: 18px; border-left: 1px solid var(--border); position: relative; }
+.step::before { content: ""; position: absolute; left: -4px; top: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
+.step-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+.step-n { font-size: 12px; color: var(--text-faint); }
+.step-head h3 { font-size: 15px; font-weight: 600; }
+.step-text, .step-list { color: var(--text-dim); font-size: 13px; line-height: 1.6; max-width: 680px; margin-bottom: 8px; }
+.step-list { padding-left: 18px; }
+.step code { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--amber); background: var(--panel); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; }
+.step a, .lead a { color: var(--amber); }
+.step .card-grid { margin-top: 12px; }

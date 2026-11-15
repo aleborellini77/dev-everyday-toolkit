@@ -4,5 +4,5 @@ when: "query bugs, schema questions"
 order: 10
 ---
 
-- [DB Fiddle](https://www.dbfiddle.uk): Test a query against Postgres/MySQL without touching prod.
-- [SQL Fiddle](http://sqlfiddle.com): Share a reproducible schema-plus-query snippet.
+- [DB Fiddle](https://www.dbfiddle.uk): Test a query against Postgres/MySQL without touching prod. #no-signup #playground
+- [SQL Fiddle](http://sqlfiddle.com): Share a reproducible schema-plus-query snippet. #no-signup #playground

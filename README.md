@@ -6,11 +6,14 @@ Una pagina statica con link a tool raggruppati per problema (DNS, hosting, SSL, 
 
 ```
 content/            una categoria = un file .md (15 già pronte)
+  _tags.md          vocabolario dei tag condivisi
   _FORMATO.md       promemoria del formato (ignorato dal sito)
-src/                Astro: parser dei .md, pagina, componenti, stile
+  percorsi/         percorsi di diagnosi: una checklist = un file .md
+src/                Astro: parser dei .md, pagine, componenti, stile
 .github/workflows/
   deploy.yml        build + pubblicazione su Pages a ogni push su main
   check.yml         solo validazione, sulle pull request
+.github/dependabot.yml   aggiorna da solo Astro e le azioni dei workflow (apre una pull request)
 .env.example        variabili per lo sviluppo locale
 ```
 
@@ -42,6 +45,38 @@ order: 16
 ```
 
 Il nome del file diventa l'ancora (`#backup`). Non serve registrarlo da nessuna parte.
+
+## Tag e filtri
+
+Ogni tool può avere dei tag in fondo alla riga, che sul sito diventano filtri cliccabili nella barra laterale (più tag insieme = devono valere tutti, e si combinano con la ricerca; lo stato resta nell'indirizzo, per esempio `?tag=cli,brew`):
+
+```md
+- [nmap](https://nmap.org/book/man.html) `nmap -p 1-1000 host`: Scan open ports. #cli #brew #security
+```
+
+I tag ammessi sono elencati in `content/_tags.md` (una riga `- nome: descrizione`). Un tag che non è nell'elenco fa fallire la build: per crearne uno nuovo si aggiunge la riga lì. Vale la pena tenerli pochi e trasversali alle categorie (`#cli`, `#status`, `#no-signup`…): quelli che coincidono con una categoria non servono.
+
+> I tag `#no-signup` li ho assegnati dalla mia conoscenza dei tool, senza poterli verificare uno per uno: controllali la prima volta che passi dal sito.
+
+## Percorsi di diagnosi
+
+Le categorie rispondono a "che tipo di problema è"; i **percorsi** rispondono a "da dove comincio". Sono checklist ordinate per un sintomo ("il sito non carica", "le email finiscono in spam"…), in `content/percorsi/`. Sul sito stanno sotto *diagnosis paths*, in alto nella barra laterale.
+
+```md
+---
+title: "The site won't load"
+when: "a client says \"the site is down\""
+order: 1
+---
+
+## Does the domain still resolve?
+Cosa controllare e come leggere il risultato.
+
+- [[dns/DNS Checker]]
+- [[terminal/dig]]: `dig +short A example.com`
+```
+
+Ogni `## Titolo` è un passo; `- [[categoria/Nome del tool]]` pesca il tool dalla categoria (nome, link e descrizione restano in un posto solo). Dopo i due punti si può aggiungere una nota valida solo per quel passo. Se un riferimento non esiste più, la build fallisce con file e riga. Per un percorso nuovo basta un nuovo file in `content/percorsi/`.
 
 ## Formato
 
@@ -123,6 +158,28 @@ Il progetto è un normale sito Astro statico: Cloudflare Pages o Netlify si coll
 | `PUBLIC_EDIT_URL` | impostata dal workflow / `.env` | mostra il link **edit** accanto a ogni categoria |
 | `ASTRO_SITE`, `ASTRO_BASE` | impostate dal workflow | indirizzo e percorso base per Pages |
 
+## Sicurezza
+
+**Cosa protegge davvero e cosa no.** La password è un deterrente, non una protezione (vedi sopra): l'hash e tutti i link sono nel sorgente della pagina, e l'hash è un SHA-256 senza sale, quindi una password debole si scopre offline in pochi secondi. Perciò usa una passphrase lunga (20+ caratteri, da password manager) e **mai una password che usi altrove**. Il repo di un sito su Pages gratuito è pubblico: in `content/` non va nulla di riservato.
+
+**Cosa è stato messo in sicurezza nel codice**
+- *Testo dei file Markdown*: viene sempre "escapato", non può generare HTML o script. I link devono essere `http(s)`. Provato con script, `javascript:`, attributi `on…=` e virgolette in titoli, descrizioni, passi e note: niente viene eseguito.
+- *Righe enormi*: tetto di 1000 caratteri per riga, con errore chiaro (una riga di 60.000 spazi bloccava la build per 8 secondi: oggi fallisce subito).
+- *Pagina*: `noindex` e `referrer: no-referrer` (cliccando un tool non si comunica agli altri siti l'indirizzo del toolkit).
+- *Workflow*: permessi minimi (`contents: read`; `pages`/`id-token` solo per il deploy), timeout su ogni job, nessun testo esterno interpolato nei comandi. Le pull request partono da fork senza accesso ai secret.
+- *Dipendenze*: una sola (`astro`); `npm audit` pulito. Dependabot apre una pull request quando esce un aggiornamento o un avviso.
+
+**Da fare una volta sul repository** (non si può fare da codice)
+1. Account con autenticazione a due fattori.
+2. *Settings → Code security*: attiva *Secret scanning* con *Push protection* e *Dependabot alerts*.
+3. *Settings → Branches*: regola su `main` che richiede la pull request e il controllo `Check / build` (opzionale se lavori da solo, ma ferma una build rotta prima del merge).
+4. *Settings → Actions → General*: permessi del workflow su *Read repository contents* e approvazione obbligatoria per i workflow dei nuovi collaboratori esterni.
+5. *Settings → Pages*: lascia attivo *Enforce HTTPS*.
+
+**Limiti noti**
+- Le azioni dei workflow sono indicate per versione (`@v4`), non per SHA: se un tag venisse manomesso il workflow userebbe il codice nuovo. Il rischio è basso per azioni ufficiali; per annullarlo si fissano gli SHA (con Dependabot restano aggiornati).
+- Il font arriva da Google Fonts: chi apre il sito comunica il proprio IP a Google. Per evitarlo si può includere il font nel progetto (pacchetto `@fontsource/ibm-plex-mono`).
+
 ## Problemi comuni
 
 - **Build rossa dopo una modifica**: apri il log di Actions, la prima riga d'errore indica file e riga.
@@ -134,5 +191,7 @@ Il progetto è un normale sito Astro statico: Cloudflare Pages o Netlify si coll
 ## Cosa è stato provato e cosa no
 
 **Provato**: build con i 15 file (15 categorie, 59 tool, identici ai dati originali); riga malformata, indirizzo non http(s), duplicato, categoria vuota e `title` mancante fanno fallire la build con file e riga; annotazione `::error` di GitHub Actions; file `_*.md` ignorati e nuovo file aggiunto correttamente; build con base path `/nome-repo`; nel browser gate (password errata e corretta), ricerca, link "edit".
+
+**Provato anche** (tag, percorsi, sicurezza): script e attributi malevoli nei file Markdown (niente viene eseguito), righe patologiche per le regex; tag sconosciuto, tag senza descrizione, riferimento a tool o categoria inesistente, riferimento malformato e percorso senza passi fanno fallire la build con file e riga; filtri per tag nel browser (AND, combinazione con la ricerca, reset, `?tag=` nell'indirizzo); pagine dei percorsi con base path e gate sulla sessione nuova.
 
 **Non provato**: i workflow GitHub Actions (non eseguibili fuori da GitHub: il primo push è il primo test reale; i passi sono quelli standard di `withastro/action` e `actions/deploy-pages`) e il deploy su Cloudflare/Netlify.

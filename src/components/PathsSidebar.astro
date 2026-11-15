@@ -1,0 +1,24 @@
+---
+import type { DiagnosticPath } from '../lib/paths';
+import { url } from '../lib/url';
+interface Props { paths: DiagnosticPath[]; current?: string }
+const { paths, current } = Astro.props;
+---
+<aside class="sidebar">
+  <div class="brand">
+    <span class="index"><span class="user">dev</span><span class="path">@macbook-pro-m1 ~ %</span></span>
+    <h1>Diagnosis paths<span class="cursor"></span></h1>
+    <p>an ordered checklist per symptom, pulling tools from the categories</p>
+  </div>
+  <a class="side-link" href={url()}><span>← all categories</span></a>
+  <ul class="nav-list always">
+    {paths.map((p, i) => (
+      <li>
+        <a href={url(`percorsi/${p.id}/`)} class={p.id === current ? 'active' : ''}>
+          <span class="n">{String(i + 1).padStart(2, '0')}</span>
+          <span>{p.title}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</aside>

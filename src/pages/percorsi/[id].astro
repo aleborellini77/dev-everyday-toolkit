@@ -1,0 +1,52 @@
+---
+import Base from '../../layouts/Base.astro';
+import AppShell from '../../components/AppShell.astro';
+import TerminalBar from '../../components/TerminalBar.astro';
+import PathsSidebar from '../../components/PathsSidebar.astro';
+import ToolCard from '../../components/ToolCard.astro';
+import { loadSite } from '../../lib/site-data';
+import { inline } from '../../lib/inline';
+
+export async function getStaticPaths() {
+  const { paths } = await loadSite();
+  return paths.map((p) => ({ params: { id: p.id }, props: { path: p, paths } }));
+}
+const { path, paths } = Astro.props;
+const editBase = import.meta.env.PUBLIC_EDIT_URL ?? '';
+---
+<Base title={`${path.title} — Dev / IT Toolkit`}>
+  <AppShell>
+    <TerminalBar />
+    <div class="frame">
+      <PathsSidebar paths={paths} current={path.id} />
+      <main>
+        <div class="lead">
+          <h2># {path.title}</h2>
+          {path.when && <p class="path-when">{path.when}</p>}
+          {path.intro.map((l) => <p class="path-intro" set:html={inline(l)} />)}
+          {editBase && <a class="edit-link" href={`${editBase}percorsi/${path.id}.md`} target="_blank" rel="noopener">edit</a>}
+        </div>
+        <ol class="steps">
+          {path.steps.map((s, i) => (
+            <li class="step">
+              <div class="step-head">
+                <span class="step-n mono">{String(i + 1).padStart(2, '0')}</span>
+                <h3>{s.title}</h3>
+              </div>
+              {s.blocks.map((b) =>
+                b.list
+                  ? <ul class="step-list">{b.lines.map((l) => <li set:html={inline(l)} />)}</ul>
+                  : <p class="step-text" set:html={inline(b.lines.join(' '))} />
+              )}
+              {s.tools.length > 0 && (
+                <div class="card-grid">
+                  {s.tools.map((t) => <ToolCard {...t.tool} note={t.note} from={t.category} />)}
+                </div>
+              )}
+            </li>
+          ))}
+        </ol>
+      </main>
+    </div>
+  </AppShell>
+</Base>

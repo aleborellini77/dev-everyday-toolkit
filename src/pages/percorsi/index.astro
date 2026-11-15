@@ -1,0 +1,35 @@
+---
+import Base from '../../layouts/Base.astro';
+import AppShell from '../../components/AppShell.astro';
+import TerminalBar from '../../components/TerminalBar.astro';
+import PathsSidebar from '../../components/PathsSidebar.astro';
+import { loadSite } from '../../lib/site-data';
+import { url } from '../../lib/url';
+
+const { paths } = await loadSite();
+---
+<Base title="Diagnosis paths — Dev / IT Toolkit">
+  <AppShell>
+    <TerminalBar />
+    <div class="frame">
+      <PathsSidebar paths={paths} />
+      <main>
+        <div class="lead">
+          <h2># {paths.length} step-by-step paths: start from the symptom, follow the checks in order.</h2>
+        </div>
+        <ul class="path-list">
+          {paths.map((p, i) => (
+            <li>
+              <a class="path-card" href={url(`percorsi/${p.id}/`)}>
+                <span class="idx mono">{String(i + 1).padStart(2, '0')}</span>
+                <span class="path-title">{p.title}</span>
+                {p.when && <span class="path-when">{p.when}</span>}
+                <span class="nav-count">{p.steps.length} steps →</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </main>
+    </div>
+  </AppShell>
+</Base>

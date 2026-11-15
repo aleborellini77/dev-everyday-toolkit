@@ -1,0 +1,41 @@
+---
+import Gate from './Gate.astro';
+const gateHash = import.meta.env.PUBLIC_GATE_HASH ?? '';
+---
+{gateHash && <Gate />}
+<div data-app data-gate-hash={gateHash} hidden={!!gateHash}>
+  <slot />
+</div>
+
+<script>
+  // Password gate (deterrente lato client, non sicurezza vera). Vale per tutte le pagine che usano AppShell.
+  const app = document.querySelector<HTMLElement>('[data-app]')!;
+  const gate = document.getElementById('gate');
+  const hash = app.dataset.gateHash ?? '';
+
+  async function sha256(text: string) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  function unlock() {
+    app.hidden = false;
+    gate?.setAttribute('hidden', '');
+    try { sessionStorage.setItem('toolkit-unlocked', hash); } catch {}
+  }
+  if (hash) {
+    let remembered = false;
+    try { remembered = sessionStorage.getItem('toolkit-unlocked') === hash; } catch {}
+    if (remembered) unlock();
+    else {
+      gate?.removeAttribute('hidden');
+      const pw = document.getElementById('gate-pw') as HTMLInputElement;
+      const err = document.getElementById('gate-error')!;
+      pw.focus();
+      document.getElementById('gate-form')!.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if ((await sha256(pw.value)) === hash) unlock();
+        else { err.textContent = '-bash: permission denied'; pw.value = ''; pw.focus(); }
+      });
+    }
+  }
+</script>

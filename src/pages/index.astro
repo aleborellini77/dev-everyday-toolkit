@@ -1,28 +1,18 @@
 ---
-import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
+import AppShell from '../components/AppShell.astro';
 import TerminalBar from '../components/TerminalBar.astro';
 import CategorySection from '../components/CategorySection.astro';
-import Gate from '../components/Gate.astro';
-import { parseTools } from '../lib/parse-tools';
+import { loadSite } from '../lib/site-data';
+import { url } from '../lib/url';
 
-const entries = (await getCollection('categories')).sort(
-  (a, b) => a.data.order - b.data.order || a.id.localeCompare(b.id),
-);
-// Il parsing dei tool fa fallire la build, con file e riga, se un file è scritto male.
-const categories = entries.map((e) => ({
-  id: e.id,
-  title: e.data.title,
-  when: e.data.when,
-  tools: parseTools(e.body ?? '', `content/${e.id}.md`, e.filePath),
-}));
+// loadSite() fa fallire la build, con file e riga, se un file è scritto male.
+const { categories, tags, paths } = await loadSite();
 const editBase = import.meta.env.PUBLIC_EDIT_URL ?? '';
-const gateHash = import.meta.env.PUBLIC_GATE_HASH ?? '';
 const total = categories.reduce((n, c) => n + c.tools.length, 0);
 ---
 <Base>
-  {gateHash && <Gate />}
-  <div data-app data-gate-hash={gateHash} hidden={!!gateHash}>
+  <AppShell>
     <TerminalBar />
     <div class="frame">
       <aside class="sidebar">
@@ -31,9 +21,24 @@ const total = categories.reduce((n, c) => n + c.tools.length, 0);
           <h1>Dev / IT Toolkit<span class="cursor"></span></h1>
           <p>jump to the category matching the symptom, then the tool that isolates the cause</p>
         </div>
+        {paths.length > 0 && (
+          <a class="side-link" href={url('percorsi/')}>
+            <span>diagnosis paths</span><span class="nav-count">{paths.length} →</span>
+          </a>
+        )}
         <div class="search-box">
           <input id="search" type="text" placeholder="grep tools..." autocomplete="off" aria-label="Filter tools" />
         </div>
+        {tags.length > 0 && (
+          <div class="tag-bar" role="group" aria-label="Filter by tag">
+            {tags.map((t) => (
+              <button type="button" class="tag-chip" data-tag={t.id} title={t.description} aria-pressed="false">
+                #{t.id}<span class="tag-count">{t.count}</span>
+              </button>
+            ))}
+            <button type="button" class="tag-reset" id="tag-reset" hidden>reset</button>
+          </div>
+        )}
         <ul class="nav-list">
           {categories.map((c, i) => (
             <li>
@@ -59,52 +64,28 @@ const total = categories.reduce((n, c) => n + c.tools.length, 0);
         </footer>
       </main>
     </div>
-  </div>
+  </AppShell>
 
   <script>
-    const app = document.querySelector<HTMLElement>('[data-app]')!;
-    const gate = document.getElementById('gate');
-    const hash = app.dataset.gateHash ?? '';
-
-    // --- password gate (client-side deterrent, not real security) ---
-    async function sha256(text: string) {
-      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-      return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
-    }
-    function unlock() {
-      app.hidden = false;
-      gate?.setAttribute('hidden', '');
-      try { sessionStorage.setItem('toolkit-unlocked', hash); } catch {}
-    }
-    if (hash) {
-      let remembered = false;
-      try { remembered = sessionStorage.getItem('toolkit-unlocked') === hash; } catch {}
-      if (remembered) unlock();
-      else {
-        gate?.removeAttribute('hidden');
-        const pw = document.getElementById('gate-pw') as HTMLInputElement;
-        const err = document.getElementById('gate-error')!;
-        pw.focus();
-        document.getElementById('gate-form')!.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          if ((await sha256(pw.value)) === hash) unlock();
-          else { err.textContent = '-bash: permission denied'; pw.value = ''; pw.focus(); }
-        });
-      }
-    }
-
-    // --- search filter ---
+    // --- search + tag filter (i due filtri si combinano: i tag sono in AND) ---
     const input = document.getElementById('search') as HTMLInputElement;
     const sections = [...document.querySelectorAll<HTMLElement>('section.category')];
     const empty = document.getElementById('no-results')!;
-    input.addEventListener('input', () => {
+    const chips = [...document.querySelectorAll<HTMLButtonElement>('.tag-chip')];
+    const reset = document.getElementById('tag-reset') as HTMLButtonElement | null;
+    const active = new Set<string>();
+
+    function apply() {
       const q = input.value.trim().toLowerCase();
       let any = false;
       for (const s of sections) {
-        const titleHit = (s.dataset.title ?? '').includes(q);
-        let hit = titleHit;
+        const titleHit = !q || (s.dataset.title ?? '').includes(q);
+        let hit = false;
         s.querySelectorAll<HTMLElement>('.tool-card').forEach((card) => {
-          const match = !q || titleHit || (card.dataset.search ?? '').includes(q);
+          const cardTags = (card.dataset.tags ?? '').split(' ');
+          const tagOk = [...active].every((t) => cardTags.includes(t));
+          const textOk = titleHit || (card.dataset.search ?? '').includes(q);
+          const match = tagOk && textOk;
           card.classList.toggle('is-hidden', !match);
           if (match) hit = true;
         });
@@ -112,7 +93,32 @@ const total = categories.reduce((n, c) => n + c.tools.length, 0);
         any ||= hit;
       }
       empty.classList.toggle('show', !any);
-    });
+      chips.forEach((c) => {
+        const on = active.has(c.dataset.tag!);
+        c.classList.toggle('on', on);
+        c.setAttribute('aria-pressed', String(on));
+      });
+      if (reset) reset.hidden = active.size === 0;
+      // Lo stato dei tag resta nell'indirizzo (?tag=cli,brew): il filtro si può condividere.
+      try {
+        const u = new URL(location.href);
+        if (active.size) u.searchParams.set('tag', [...active].join(','));
+        else u.searchParams.delete('tag');
+        history.replaceState(null, '', u);
+      } catch {}
+    }
+
+    input.addEventListener('input', apply);
+    chips.forEach((c) => c.addEventListener('click', () => {
+      const t = c.dataset.tag!;
+      if (active.has(t)) active.delete(t); else active.add(t);
+      apply();
+    }));
+    reset?.addEventListener('click', () => { active.clear(); apply(); });
+
+    const known = new Set(chips.map((c) => c.dataset.tag!));
+    (new URLSearchParams(location.search).get('tag') ?? '').split(',').filter((t) => known.has(t)).forEach((t) => active.add(t));
+    if (active.size) apply();
 
     // --- scroll-spy ---
     const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-nav]')];
