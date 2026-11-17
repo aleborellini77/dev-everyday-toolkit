@@ -12,3 +12,4 @@
 - performance: speed, Core Web Vitals, bundle weight
 - lint: validators and linters
 - playground: safe sandbox, never touches production
+- css: CSS references and modern techniques
