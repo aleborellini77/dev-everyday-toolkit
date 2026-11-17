@@ -10,6 +10,7 @@ content/            una categoria = un file .md (15 già pronte)
   _FORMATO.md       promemoria del formato (ignorato dal sito)
   percorsi/         percorsi di diagnosi: una checklist = un file .md
 src/                Astro: parser dei .md, pagine, componenti, stile
+public/favicons/    icone del sito (favicon, apple-touch-icon, manifest)
 .github/workflows/
   deploy.yml        build + pubblicazione su Pages a ogni push su main
   check.yml         solo validazione, sulle pull request
@@ -149,6 +150,10 @@ Su hosting statico non esiste una password vera: l'hash è nel sorgente della pa
 Il progetto è un normale sito Astro statico: Cloudflare Pages o Netlify si collegano al repo e ripubblicano a ogni push, come fa il workflow. Build command `npm run build`, cartella di output `dist`. Le variabili `PUBLIC_GATE_HASH` e `PUBLIC_EDIT_URL` si impostano nel pannello del servizio; `ASTRO_BASE` non serve (il sito sta alla radice).
 
 ---
+
+## Icone (favicon)
+
+I file sono in `public/favicons/`: Astro pubblica solo ciò che sta in `public/`, e `src/layouts/Base.astro` li collega alla pagina aggiungendo da solo il percorso base di GitHub Pages. Per cambiare le icone basta sostituire i file tenendo gli stessi nomi (altrimenti aggiorna i link in `Base.astro` e in `site.webmanifest`). Nel manifest i percorsi delle icone sono relativi (`web-app-manifest-192x192.png`, senza `/` iniziale): con un `/` iniziale su Pages darebbero 404.
 
 ## Variabili
 

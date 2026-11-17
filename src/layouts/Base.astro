@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { url } from '../lib/url';
 const { title = 'Dev / IT Toolkit' } = Astro.props;
 ---
 <!doctype html>
@@ -11,6 +12,13 @@ const { title = 'Dev / IT Toolkit' } = Astro.props;
     <!-- Cliccando un tool non si comunica agli altri siti l'indirizzo di questo toolkit. -->
     <meta name="referrer" content="no-referrer" />
     <title>{title}</title>
+    <!-- Icone: i file stanno in public/favicons. url() aggiunge il percorso base di GitHub Pages. -->
+    <link rel="icon" type="image/png" href={url('favicons/favicon-96x96.png')} sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href={url('favicons/favicon.svg')} />
+    <link rel="shortcut icon" href={url('favicons/favicon.ico')} />
+    <link rel="apple-touch-icon" sizes="180x180" href={url('favicons/apple-touch-icon.png')} />
+    <meta name="apple-mobile-web-app-title" content="Developer Toolkit" />
+    <link rel="manifest" href={url('favicons/site.webmanifest')} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
