@@ -20,9 +20,12 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: withastro/action@v3
+        with:
+          node-version: 22 # Astro 7 richiede Node >= 22.23.4; l'azione userebbe Node 20
         env:
           ASTRO_SITE: https://${{ github.repository_owner }}.github.io
           ASTRO_BASE: /${{ github.event.repository.name }}
